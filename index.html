@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="jquery-3.7.1.min.js"></script>
+    <title>Juego Monty Hall</title>
+    <style>
+        .door {
+            width: 100px;
+            height: 200px;
+            border: 2px solid #000;
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .hidden {
+            visibility: hidden;
+        }
+    </style>
+    <script>
+        function fnEjecutar(x) {
+            var dato = x;
+            var jsonEnviar = {
+                'dato': dato
+            }
+            // Método Ajax de jQuery
+            $.ajax({
+                url: "guardar.php",
+                type: "POST", // Tipo de envío: post o get como en un formulario web
+                dataType: "json", // Tipo de data que retorna
+                data: jsonEnviar
+            }).done(function(data) {
+                console.log(data);
+            });
+            // Método Ajax de jQuery
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let doors = ["car", "goat", "goat"];
+            let selectedDoor = null;
+            let revealedDoor = null;
+            let switchPrompt = document.getElementById("switchPrompt");
+
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            window.resetGame = function() {
+                shuffle(doors);
+                selectedDoor = null;
+                revealedDoor = null;
+                switchPrompt.classList.add("hidden");
+                document.getElementById("result").innerHTML = "";
+                document.getElementById("probabilities").innerHTML = "";
+                let doorElements = document.getElementsByClassName("door");
+                for (let i = 0; i < doorElements.length; i++) {
+                    doorElements[i].style.backgroundColor = "#fff";
+                }
+            }
+
+            window.selectDoor = function(door) {
+                if (selectedDoor === null) {
+                    selectedDoor = door;
+                    revealGoat(door);
+                    switchPrompt.classList.remove("hidden");
+                }
+            }
+
+            function revealGoat(selected) {
+                let potentialDoors = [1, 2, 3].filter(d => d !== selected && doors[d - 1] === "goat");
+                revealedDoor = potentialDoors[Math.floor(Math.random() * potentialDoors.length)];
+                document.getElementById("door" + revealedDoor).style.backgroundColor = "yellow";
+                document.getElementById("result").innerHTML = `Door ${revealedDoor} has a goat!`;
+            }
+
+            window.finalizeChoice = function(switchChoice) {
+                if (switchChoice) {
+                    selectedDoor = [1, 2, 3].filter(d => d !== selectedDoor && d !== revealedDoor)[0];
+                }
+                revealResult();
+            }
+
+            function revealResult() {
+                switchPrompt.classList.add("hidden");
+                let result = doors[selectedDoor - 1];
+                let resultMessage = result === "car" ? "Congratulations, you won a car!" : "Sorry, you got a goat.";
+                document.getElementById("result").innerHTML = resultMessage;
+                document.getElementById("door" + selectedDoor).style.backgroundColor = result === "car" ? "green" : "red";
+            }
+
+            window.calculateProbabilities = function() {
+                let stayWins = 0, stayLosses = 0, switchWins = 0, switchLosses = 0;
+                const simulations = 1000;
+
+                for (let i = 0; i < simulations; i++) {
+                    let doors = ["car", "goat", "goat"];
+                    shuffle(doors);
+
+                    let initialChoice = Math.floor(Math.random() * 3);
+                    let revealedDoor = [0, 1, 2].filter(d => d !== initialChoice && doors[d] === "goat")[Math.floor(Math.random() * 2)];
+                    let switchChoice = [0, 1, 2].filter(d => d !== initialChoice && d !== revealedDoor)[0];
+
+                    if (doors[initialChoice] === "car") {
+                        stayWins++;
+                    } else {
+                        stayLosses++;
+                    }
+
+                    if (doors[switchChoice] === "car") {
+                        switchWins++;
+                    } else {
+                        switchLosses++;
+                    }
+                }
+
+                document.getElementById("probabilities").innerHTML = `
+                    <p>Probabilidades:</p>
+                    <p>Quedarse con la elección inicial:</p>
+                    <p>Ganar: ${((stayWins / simulations) * 100).toFixed(2)}% (${stayWins}/${simulations})</p>
+                    <p>Perder: ${((stayLosses / simulations) * 100).toFixed(2)}% (${stayLosses}/${simulations})</p>
+                    <p>Cambiar de elección:</p>
+                    <p>Ganar: ${((switchWins / simulations) * 100).toFixed(2)}% (${switchWins}/${simulations})</p>
+                    <p>Perder: ${((switchLosses / simulations) * 100).toFixed(2)}% (${switchLosses}/${simulations})</p>
+                `;
+            }
+
+            // Initialize game on page load
+            resetGame();
+        });
+    </script>
+</head>
+<body>
+
+    <h1>Juego Monty Hall</h1>
+    <div id="doors">
+        <div class="door" id="door1" onclick="selectDoor(1)">Puerta 1</div>
+        <div class="door" id="door2" onclick="selectDoor(2)">Puerta 2</div>
+        <div class="door" id="door3" onclick="selectDoor(3)">Puerta 3</div>
+    </div>
+    <button onclick="resetGame()">Reset</button>
+    <button onclick="calculateProbabilities()">Probabilidad</button>
+    <div id="result"></div>
+    <div id="switchPrompt" class="hidden">
+        <p>Do you want to switch your choice?</p>
+        <button onclick="finalizeChoice(true)">Yes</button>
+        <button onclick="finalizeChoice(false)">No</button>
+    </div>
+    <div id="probabilities"></div>
+</body>
+</html>
